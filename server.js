@@ -152,8 +152,8 @@ async function access() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        aura: aura,
-        laura: laura
+        Usuario: Ingrese su usuario ,
+       Clave: Ingrese su Clave
       })
     });
 
