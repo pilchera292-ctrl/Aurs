@@ -16,7 +16,6 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>S0MBRA ACCESS</title>
 
 <style>
@@ -90,10 +89,6 @@ button {
   cursor: pointer;
 }
 
-button:active {
-  transform: scale(0.98);
-}
-
 #status {
   margin-top: 18px;
   min-height: 22px;
@@ -108,19 +103,19 @@ button:active {
 
   <div class="logo">S0MBRA</div>
 
-  <label class="label">AURA</label>
+  <label class="label">USUARIO</label>
   <input
-    id="aura"
+    id="usuario"
     type="text"
-    placeholder="Ingresá AURA"
+    placeholder="Ingresá tu usuario"
     autocomplete="off"
   >
 
-  <label class="label">LAURA</label>
+  <label class="label">CLAVE</label>
   <input
-    id="laura"
+    id="clave"
     type="password"
-    placeholder="Ingresá LAURA"
+    placeholder="Ingresá tu clave"
     autocomplete="off"
   >
 
@@ -133,11 +128,11 @@ button:active {
 <script>
 async function access() {
 
-  const aura = document.getElementById("aura").value.trim();
-  const laura = document.getElementById("laura").value.trim();
+  const usuario = document.getElementById("usuario").value.trim();
+  const clave = document.getElementById("clave").value.trim();
   const status = document.getElementById("status");
 
-  if (!aura || !laura) {
+  if (!usuario || !clave) {
     status.textContent = "⚠️ Completá los dos campos";
     return;
   }
@@ -152,8 +147,8 @@ async function access() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        Usuario: Ingrese su usuario ,
-       Clave: Ingrese su Clave
+        aura: usuario,
+        laura: clave
       })
     });
 
@@ -180,10 +175,10 @@ app.post("/access", async (req, res) => {
 
   try {
 
-    const Usuario = String(req.body?.Usuario || "").trim();
-    const Clave= String(req.body?.Clave || "").trim();
+    const usuario = String(req.body?.aura || "").trim();
+    const clave = String(req.body?.laura || "").trim();
 
-    if (!Usuario || !Clave) {
+    if (!usuario || !clave) {
       return res.status(400).json({
         success: false,
         message: "Completá los dos campos"
@@ -197,7 +192,7 @@ app.post("/access", async (req, res) => {
       });
     }
 
-    if (Usuario !== ACCESS_USER || clave !== ACCESS_KEY) {
+    if (usuario !== ACCESS_USER || clave !== ACCESS_KEY) {
       return res.status(401).json({
         success: false,
         message: "Datos incorrectos"
