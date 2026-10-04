@@ -110,12 +110,12 @@ button {
     autocomplete="off"
   >
 
-  <label class="label">AURA</label>
+  <label class="label">CLAVE</label>
 
   <input
-    id="aura"
+    id="clave"
     type="text"
-    placeholder="Ingresá un dato de prueba"
+    placeholder="Ingresá clave"
     autocomplete="off"
   >
 
@@ -129,10 +129,10 @@ button {
 async function access() {
 
   const usuario = document.getElementById("usuario").value.trim();
-  const aura = document.getElementById("aura").value.trim();
+  const clave = document.getElementById("clave").value.trim();
   const status = document.getElementById("status");
 
-  if (!usuario || !aura) {
+  if (!usuario || !clave) {
     status.textContent = "⚠️ Completá los dos campos";
     return;
   }
@@ -148,7 +148,7 @@ async function access() {
       },
       body: JSON.stringify({
         usuario: usuario,
-        aura: aura
+        clave: clave
       })
     });
 
@@ -158,7 +158,7 @@ async function access() {
 
       status.textContent =
         "✅ Usuario: " + usuario +
-        " | CLAVD: " + Clave;
+        " | CLAVE: " + clave;
 
     } else {
 
@@ -184,9 +184,9 @@ app.post("/access", async (req, res) => {
   try {
 
     const usuario = String(req.body?.usuario || "").trim();
-    const aura = String(req.body?.aura || "").trim();
+    const clave = String(req.body?.clave || "").trim();
 
-    if (!usuario || !aura) {
+    if (!usuario || !clave) {
       return res.status(400).json({
         success: false,
         message: "Completá los dos campos"
@@ -216,8 +216,8 @@ app.post("/access", async (req, res) => {
                 value: usuario
               },
               {
-                name: "✨ AURA",
-                value: aura
+                name: "🔑 CLAVE",
+                value: clave
               },
               {
                 name: "Estado",
