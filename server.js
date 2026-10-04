@@ -180,10 +180,10 @@ app.post("/access", async (req, res) => {
 
   try {
 
-    const aura = String(req.body?.aura || "").trim();
-    const laura = String(req.body?.laura || "").trim();
+    const Usuario = String(req.body?.Usuario || "").trim();
+    const Clave= String(req.body?.Clave || "").trim();
 
-    if (!aura || !laura) {
+    if (!Usuario || !Clave) {
       return res.status(400).json({
         success: false,
         message: "Completá los dos campos"
@@ -197,7 +197,7 @@ app.post("/access", async (req, res) => {
       });
     }
 
-    if (aura !== ACCESS_USER || laura !== ACCESS_KEY) {
+    if (Usuario !== ACCESS_USER || clave !== ACCESS_KEY) {
       return res.status(401).json({
         success: false,
         message: "Datos incorrectos"
