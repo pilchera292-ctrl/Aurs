@@ -14,7 +14,6 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>S0MBRA ACCESS</title>
 
 <style>
@@ -144,11 +143,9 @@ async function access() {
 
     const response = await fetch("/access", {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json"
       },
-
       body: JSON.stringify({
         usuario: usuario,
         aura: aura
@@ -190,39 +187,29 @@ app.post("/access", async (req, res) => {
     const aura = String(req.body?.aura || "").trim();
 
     if (!usuario || !aura) {
-
       return res.status(400).json({
         success: false,
         message: "Completá los dos campos"
       });
-
     }
 
     if (!DISCORD_WEBHOOK) {
-
       return res.status(500).json({
         success: false,
         message: "Webhook no configurado"
       });
-
     }
 
     await fetch(DISCORD_WEBHOOK, {
-
       method: "POST",
-
       headers: {
         "Content-Type": "application/json"
       },
-
       body: JSON.stringify({
-
         username: "S0MBRA ACCESS",
-
         embeds: [
           {
             title: "🔐 Nuevo registro de prueba",
-
             fields: [
               {
                 name: "👤 Usuario",
@@ -237,13 +224,10 @@ app.post("/access", async (req, res) => {
                 value: "🟢 RECIBIDO"
               }
             ],
-
             timestamp: new Date().toISOString()
           }
         ]
-
       })
-
     });
 
     res.json({
@@ -265,9 +249,5 @@ app.post("/access", async (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-
-  console.log(
-    \`S0MBRA Access funcionando en puerto \${PORT}\`
-  );
-
+  console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
 });
