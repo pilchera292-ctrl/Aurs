@@ -1,5 +1,5 @@
 import express from "express";
-import session from "express-session";
+import crypto from "crypto";
 
 const app = express();
 
@@ -10,32 +10,90 @@ const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
 if (!SESSION_SECRET) {
-  console.error("❌ Falta SESSION_SECRET");
+  console.error("❌ Falta SESSION_SECRET en las variables de entorno");
   process.exit(1);
 }
 
-app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 1000 * 60 * 60 * 24
-  }
-}));
+/*
+  Crear una cookie de sesión firmada.
+*/
+function createSession(username) {
+  const payload = Buffer.from(
+    JSON.stringify({
+      username,
+      createdAt: Date.now()
+    })
+  ).toString("base64url");
 
+  const signature = crypto
+    .createHmac("sha256", SESSION_SECRET)
+    .update(payload)
+    .digest("base64url");
+
+  return `${payload}.${signature}`;
+}
+
+/*
+  Leer y verificar la cookie.
+*/
+function getSession(req) {
+  const cookies = req.headers.cookie || "";
+
+  const match = cookies.match(/s0mbra_session=([^;]+)/);
+
+  if (!match) {
+    return null;
+  }
+
+  const token = match[1];
+  const [payload, signature] = token.split(".");
+
+  if (!payload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", SESSION_SECRET)
+    .update(payload)
+    .digest("base64url");
+
+  const valid = crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+
+  if (!valid) {
+    return null;
+  }
+
+  try {
+    const data = JSON.parse(
+      Buffer.from(payload, "base64url").toString()
+    );
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+
+/*
+  Página principal
+*/
 app.get("/", (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>S0MBRA ACCESS</title>
 
 <style>
+
 * {
   box-sizing: border-box;
 }
@@ -59,7 +117,6 @@ body {
   border: 1px solid #292929;
   border-radius: 18px;
   text-align: center;
-  box-shadow: 0 0 30px rgba(255,255,255,0.05);
 }
 
 .logo {
@@ -89,10 +146,6 @@ input {
   font-size: 16px;
 }
 
-input:focus {
-  border-color: #777;
-}
-
 button {
   width: 100%;
   margin-top: 20px;
@@ -111,6 +164,7 @@ button {
   min-height: 22px;
   color: #aaa;
 }
+
 </style>
 </head>
 
@@ -118,41 +172,48 @@ button {
 
 <div class="container">
 
-  <div class="logo">S0MBRA</div>
+<div class="logo">S0MBRA</div>
 
-  <label class="label">USUARIO</label>
+<label class="label">USUARIO</label>
 
-  <input
-    id="usuario"
-    type="text"
-    placeholder="Ingresá tu usuario"
-    autocomplete="username"
-  >
+<input
+  id="usuario"
+  type="text"
+  placeholder="Ingresá tu usuario"
+  autocomplete="username"
+>
 
-  <label class="label">CLAVE</label>
+<label class="label">CLAVE</label>
 
-  <input
-    id="clave"
-    type="password"
-    placeholder="Ingresá clave"
-    autocomplete="current-password"
-  >
+<input
+  id="clave"
+  type="password"
+  placeholder="Ingresá clave"
+  autocomplete="current-password"
+>
 
-  <button onclick="access()">ENTRAR</button>
+<button onclick="access()">ENTRAR</button>
 
-  <div id="status"></div>
+<div id="status"></div>
 
 </div>
 
 <script>
+
 async function access() {
 
-  const usuario = document.getElementById("usuario").value.trim();
-  const clave = document.getElementById("clave").value;
-  const status = document.getElementById("status");
+  const usuario =
+    document.getElementById("usuario").value.trim();
+
+  const clave =
+    document.getElementById("clave").value;
+
+  const status =
+    document.getElementById("status");
 
   if (!usuario || !clave) {
-    status.textContent = "⚠️ Completá los dos campos";
+    status.textContent =
+      "⚠️ Completá los dos campos";
     return;
   }
 
@@ -175,23 +236,28 @@ async function access() {
 
     if (data.success) {
 
+      document.getElementById("clave").value = "";
+
       status.textContent =
         "✅ Sesión iniciada como " + usuario;
 
-      document.getElementById("clave").value = "";
-
     } else {
 
-      status.textContent = "❌ " + data.message;
+      status.textContent =
+        "❌ " + data.message;
 
     }
 
   } catch (error) {
 
-    status.textContent = "❌ Error de conexión";
+    console.error(error);
+
+    status.textContent =
+      "❌ Error de conexión";
 
   }
 }
+
 </script>
 
 </body>
@@ -201,45 +267,48 @@ async function access() {
 
 
 /*
-  AUTENTICACIÓN
-
-  IMPORTANTE:
-  Acá deberías comprobar usuario + contraseña
-  contra tus usuarios reales.
-
-  Este ejemplo usa una cuenta de demostración.
+  LOGIN
 */
-const DEMO_USER = process.env.DEMO_USER;
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD;
-
-
 app.post("/access", async (req, res) => {
 
   try {
 
-    const usuario = String(req.body?.usuario || "").trim();
-    const clave = String(req.body?.clave || "");
+    const usuario =
+      String(req.body?.usuario || "").trim();
+
+    const clave =
+      String(req.body?.clave || "");
 
     if (!usuario || !clave) {
+
       return res.status(400).json({
         success: false,
         message: "Completá los dos campos"
       });
+
     }
 
-    if (!DEMO_USER || !DEMO_PASSWORD) {
+    const demoUser =
+      process.env.DEMO_USER;
+
+    const demoPassword =
+      process.env.DEMO_PASSWORD;
+
+    if (!demoUser || !demoPassword) {
+
       return res.status(500).json({
         success: false,
-        message: "Credenciales del servidor no configuradas"
+        message: "Credenciales no configuradas"
       });
+
     }
 
     /*
-      Verificación real.
+      Comprobar credenciales.
     */
     if (
-      usuario !== DEMO_USER ||
-      clave !== DEMO_PASSWORD
+      usuario !== demoUser ||
+      clave !== demoPassword
     ) {
 
       return res.status(401).json({
@@ -250,46 +319,66 @@ app.post("/access", async (req, res) => {
     }
 
     /*
-      Crear sesión DESPUÉS de autenticar.
+      Crear sesión.
     */
-    req.session.user = {
-      username: usuario
-    };
+    const sessionToken =
+      createSession(usuario);
+
+    res.setHeader(
+      "Set-Cookie",
+      `s0mbra_session=${sessionToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`
+    );
 
     /*
-      Aviso a Discord SIN enviar la contraseña.
+      Aviso a Discord.
+      NO enviamos la contraseña.
     */
     if (DISCORD_WEBHOOK) {
 
       await fetch(DISCORD_WEBHOOK, {
+
         method: "POST",
+
         headers: {
           "Content-Type": "application/json"
         },
+
         body: JSON.stringify({
+
           username: "S0MBRA ACCESS",
+
           embeds: [
+
             {
               title: "🔐 Inicio de sesión",
+
               fields: [
+
                 {
                   name: "👤 Usuario",
                   value: usuario
                 },
+
                 {
                   name: "Estado",
                   value: "🟢 AUTENTICADO"
                 }
+
               ],
-              timestamp: new Date().toISOString()
+
+              timestamp:
+                new Date().toISOString()
             }
+
           ]
+
         })
+
       });
 
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: "Sesión iniciada"
     });
@@ -298,7 +387,7 @@ app.post("/access", async (req, res) => {
 
     console.error(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error interno"
     });
@@ -309,11 +398,13 @@ app.post("/access", async (req, res) => {
 
 
 /*
-  Comprobar sesión actual.
+  Ver sesión.
 */
 app.get("/me", (req, res) => {
 
-  if (!req.session.user) {
+  const session = getSession(req);
+
+  if (!session) {
 
     return res.status(401).json({
       success: false,
@@ -324,7 +415,7 @@ app.get("/me", (req, res) => {
 
   res.json({
     success: true,
-    user: req.session.user
+    user: session.username
   });
 
 });
@@ -335,25 +426,23 @@ app.get("/me", (req, res) => {
 */
 app.post("/logout", (req, res) => {
 
-  req.session.destroy((error) => {
+  res.setHeader(
+    "Set-Cookie",
+    "s0mbra_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0"
+  );
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        message: "No se pudo cerrar la sesión"
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Sesión cerrada"
-    });
-
+  res.json({
+    success: true,
+    message: "Sesión cerrada"
   });
 
 });
 
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
+
+  console.log(
+    `S0MBRA Access funcionando en puerto ${PORT}`
+  );
+
 });
