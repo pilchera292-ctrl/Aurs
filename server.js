@@ -1,9 +1,21 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// Limitador de tasa para prevenir ataques de fuerza bruta
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Máximo 5 intentos fallidos por IP
+  message: {
+    success: false,
+    message: "Demasiados intentos fallidos. Intente más tarde."
+  }
+});
+
+const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
   res.send(`
@@ -12,227 +24,350 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>S0MBRA // DASHBOARD</title>
-
+<title>S0MBRA 2.4 — Access Control</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap');
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+* { box-sizing: border-box; }
 
 body {
+  margin: 0;
   min-height: 100vh;
-  background-color: #050811;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(0, 162, 255, 0.08) 0px, transparent 50%),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 25px 25px, 25px 25px;
-  color: #e2e8f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(0, 170, 255, 0.16), transparent 35%),
+    linear-gradient(180deg, #111827 0%, #090d16 55%, #05070b 100%);
+  color: #f3f4f6;
   font-family: 'Fira Code', monospace;
-  display: flex;
+  overflow: hidden;
 }
 
-/* Sidebar Navigation */
-.sidebar {
-  width: 240px;
-  background: rgba(10, 15, 26, 0.9);
-  border-right: 1px solid rgba(0, 162, 255, 0.2);
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
+/* Fondo cuadrícula */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-.brand {
-  font-size: 18px;
-  font-weight: 600;
-  color: #00a2ff;
-  letter-spacing: 2px;
-  margin-bottom: 40px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* Efecto Scanlines de monitor CRT */
+.scanlines {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 10;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
 }
 
-.nav-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.container {
+  width: 90%;
+  max-width: 420px;
+  padding: 32px;
+  background: rgba(20, 25, 35, 0.94);
+  border: 2px solid #00a2ff;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.05),
+    0 12px 45px rgba(0,0,0,0.75),
+    0 0 25px rgba(0,162,255,0.16);
+  position: relative;
+  z-index: 2;
 }
 
-.nav-item a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  color: #94a3b8;
-  text-decoration: none;
-  font-size: 13px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.nav-item a:hover, .nav-item.active a {
-  background: rgba(0, 162, 255, 0.1);
-  color: #00a2ff;
-  border-left: 3px solid #00a2ff;
-}
-
-/* Main Layout */
-.main-content {
-  flex: 1;
-  padding: 30px;
-  overflow-y: auto;
+.container::before {
+  content: "";
+  position: absolute;
+  top: -2px; left: 18px; right: 18px;
+  height: 3px;
+  background: #00a2ff;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 0 12px rgba(0,162,255,0.65);
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  text-align: center;
 }
 
-.title-section h1 {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.title-section p {
-  font-size: 12px;
-  color: #64748b;
-  margin-top: 4px;
-}
-
-/* Status Cards Grid */
-.grid-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.card {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(0, 162, 255, 0.15);
-  border-radius: 8px;
-  padding: 20px;
-  backdrop-filter: blur(8px);
-}
-
-.card-title {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-bottom: 8px;
-}
-
-.card-value {
+.logo {
   font-size: 24px;
   font-weight: 600;
-  color: #f8fafc;
-}
-
-.card-status {
-  font-size: 11px;
-  margin-top: 8px;
-  color: #22c55e;
-}
-
-/* Content Area */
-.panel-section {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(0, 162, 255, 0.15);
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.section-title {
-  font-size: 14px;
+  letter-spacing: 4px;
   color: #00a2ff;
-  margin-bottom: 16px;
+  text-shadow: 0 0 10px rgba(0,162,255,0.5);
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #8b95a7;
+  margin-top: 7px;
   letter-spacing: 1px;
 }
 
-.logs-container {
-  background: #020617;
-  border: 1px solid #1e293b;
-  border-radius: 6px;
-  padding: 15px;
-  font-size: 12px;
-  color: #38bdf8;
-  height: 150px;
-  overflow-y: auto;
-  line-height: 1.6;
+.system-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #22c55e;
+  margin-top: 10px;
 }
 
+.dot {
+  width: 7px;
+  height: 7px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 9px #22c55e;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.input-group {
+  margin-bottom: 18px;
+  text-align: left;
+  position: relative;
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  color: #aeb7c5;
+  font-size: 12px;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+input {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 6px;
+  border: 1px solid #303846;
+  background: #0c111a;
+  color: #f3f4f6;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+input:focus {
+  border-color: #00a2ff;
+  box-shadow: 0 0 0 2px rgba(0,162,255,0.16);
+}
+
+.toggle-pwd {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #8b95a7;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  box-shadow: none !important;
+}
+
+button[type="submit"] {
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #00a2ff;
+  color: white;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+button[type="submit"]:hover {
+  background: #29b5ff;
+  box-shadow: 0 0 15px rgba(0,162,255,0.35);
+}
+
+button:disabled {
+  background: #374151;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+#status {
+  margin-top: 20px;
+  min-height: 20px;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.status-info { color: #60a5fa; }
+.status-success { color: #22c55e; }
+.status-error { color: #ef4444; }
 </style>
 </head>
 <body>
-
-  <!-- Navigation -->
-  <aside class="sidebar">
-    <div class="brand">
-      <span>⚡</span> S0MBRA OS
+  <div class="scanlines"></div>
+  <div class="container">
+    <div class="header">
+      <div class="logo">S0MBRA 2.4</div>
+      <div class="subtitle">SISTEMA RESTRICTO DE ACCESO CENTRAL</div>
+      <div class="system-status">
+        <span class="dot"></span>
+        <span>NODO ACTIVO — ENCRIPTACIÓN TLS v1.3</span>
+      </div>
     </div>
 
-    <ul class="nav-list">
-      <li class="nav-item active"><a href="#">📊 Estado General</a></li>
-      <li class="nav-item"><a href="#">⚙️️ Configuración</a></li>
-      <li class="nav-item"><a href="#">📝 Registros</a></li>
-      <li class="nav-item"><a href="#">🌐 Nodos</a></li>
-    </ul>
-  </aside>
-
-  <!-- Content -->
-  <main class="main-content">
-    <header class="header">
-      <div class="title-section">
-        <h1>PANEL DE CONTROL</h1>
-        <p>Métricas del sistema en tiempo real</p>
-      </div>
-    </header>
-
-    <section class="grid-cards">
-      <div class="card">
-        <div class="card-title">ESTADO DEL SERVIDOR</div>
-        <div class="card-value">ONLINE</div>
-        <div class="card-status">● Operativo (99.9%)</div>
+    <form id="auth-form" onsubmit="access(event)">
+      <div class="input-group">
+        <label class="label" for="usuario">> USUARIO</label>
+        <input id="usuario" type="text" placeholder="Ingresa tu usuario..." autocomplete="off" spellcheck="false" required>
       </div>
 
-      <div class="card">
-        <div class="card-title">SOLICITUDES / MIN</div>
-        <div class="card-value">1,280</div>
-        <div class="card-status">+12% vs hora anterior</div>
+      <div class="input-group">
+        <label class="label" for="clave">> ACCESO / CLAVE</label>
+        <div class="input-wrapper">
+          <input id="clave" type="password" placeholder="••••••••••••" autocomplete="off" required>
+          <button type="button" class="toggle-pwd" onclick="togglePasswordVisibility()">VER</button>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">USO DE MEMORIA</div>
-        <div class="card-value">42.5 MB</div>
-        <div class="card-status">Estable</div>
-      </div>
-    </section>
+      <button id="btn-submit" type="submit">AUTENTICAR</button>
+    </form>
 
-    <section class="panel-section">
-      <h2 class="section-title">> EVENTOS RECIENTES</h2>
-      <div class="logs-container">
-        [SYS_INIT] Servicio Express iniciado correctamente.<br>
-        [NET_OK] Conexión estable en el puerto ${PORT}.<br>
-        [INFO] Monitorización de datos activa.<br>
-        [READY] Esperando solicitudes de cliente...
-      </div>
-    </section>
-  </main>
+    <div id="status"></div>
+  </div>
 
+<script>
+function togglePasswordVisibility() {
+  const claveInput = document.getElementById("clave");
+  const toggleBtn = document.querySelector(".toggle-pwd");
+  if (claveInput.type === "password") {
+    claveInput.type = "text";
+    toggleBtn.textContent = "OCULTAR";
+  } else {
+    claveInput.type = "password";
+    toggleBtn.textContent = "VER";
+  }
+}
+
+async function access(event) {
+  event.preventDefault();
+
+  const usuarioInput = document.getElementById("usuario");
+  const claveInput = document.getElementById("clave");
+  const btn = document.getElementById("btn-submit");
+  const status = document.getElementById("status");
+
+  const usuario = usuarioInput.value.trim();
+  const clave = claveInput.value.trim();
+
+  usuarioInput.disabled = true;
+  claveInput.disabled = true;
+  btn.disabled = true;
+
+  status.className = "status-info";
+  status.textContent = "⏳ Validando handshake de autenticación...";
+
+  try {
+    const response = await fetch("/access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario, clave })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      status.className = "status-success";
+      status.textContent = "✅ ACCESO AUTORIZADO. Redirigiendo...";
+      setTimeout(() => {
+        alert("Bienvenido a S0MBRA 2.4");
+      }, 800);
+    } else {
+      status.className = "status-error";
+      status.textContent = "❌ " + (data.message || "Credenciales rechazadas.");
+      resetForm();
+    }
+  } catch (error) {
+    status.className = "status-error";
+    status.textContent = "❌ ERROR: No se pudo conectar con el servidor.";
+    resetForm();
+  }
+}
+
+function resetForm() {
+  document.getElementById("usuario").disabled = false;
+  document.getElementById("clave").disabled = false;
+  document.getElementById("btn-submit").disabled = false;
+}
+</script>
 </body>
 </html>
   `);
 });
 
-app.listen(PORT, () => {
-  console.log(`[SYS] Servidor corriendo en http://localhost:${PORT}`);
+app.post("/access", authLimiter, async (req, res) => {
+  try {
+    const usuario = String(req.body?.usuario || "").trim();
+    const clave = String(req.body?.clave || "").trim();
+
+    if (!usuario || !clave) {
+      return res.status(400).json({
+        success: false,
+        message: "Credenciales incompletas."
+      });
+    }
+
+    // Ejemplo básico de validación (Reemplazar con lectura de BD + hashing con bcrypt)
+    if (usuario === "admin" && clave === "sombra123") {
+      return res.json({
+        success: true,
+        message: "Autenticación exitosa."
+      });
+    }
+
+    res.status(401).json({
+      success: false,
+      message: "Usuario o clave incorrectos."
+    });
+
+  } catch (error) {
+    console.error("Error en servidor:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor."
+    });
+  }
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[S0MBRA 2.4] Gateway ejecutándose en puerto ${PORT}`);
 });
