@@ -6,6 +6,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
+const ACCESS_USER = process.env.ACCESS_USER;
 const ACCESS_KEY = process.env.ACCESS_KEY;
 
 app.get("/", (req, res) => {
@@ -15,9 +16,13 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>S0MBRA ACCESS</title>
+
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -38,18 +43,22 @@ body {
   border: 1px solid #292929;
   border-radius: 18px;
   text-align: center;
+  box-shadow: 0 0 30px rgba(255,255,255,0.05);
 }
 
 .logo {
   font-size: 32px;
   font-weight: bold;
   letter-spacing: 5px;
-  margin-bottom: 8px;
+  margin-bottom: 25px;
 }
 
-.subtitle {
-  color: #888;
-  margin-bottom: 25px;
+.label {
+  display: block;
+  text-align: left;
+  margin: 12px 0 7px;
+  color: #aaa;
+  font-size: 14px;
 }
 
 input {
@@ -62,11 +71,15 @@ input {
   outline: none;
   text-align: center;
   font-size: 16px;
-  margin-bottom: 12px;
+}
+
+input:focus {
+  border-color: #777;
 }
 
 button {
   width: 100%;
+  margin-top: 20px;
   padding: 14px;
   border: 0;
   border-radius: 10px;
@@ -74,6 +87,11 @@ button {
   color: black;
   font-size: 16px;
   font-weight: bold;
+  cursor: pointer;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 #status {
@@ -90,12 +108,19 @@ button {
 
   <div class="logo">S0MBRA</div>
 
-  <div class="subtitle">🔐 Sistema de acceso</div>
-
+  <label class="label">AURA</label>
   <input
-    id="code"
+    id="aura"
     type="text"
-    placeholder="Ingresá tu código"
+    placeholder="Ingresá AURA"
+    autocomplete="off"
+  >
+
+  <label class="label">LAURA</label>
+  <input
+    id="laura"
+    type="password"
+    placeholder="Ingresá LAURA"
     autocomplete="off"
   >
 
@@ -108,11 +133,12 @@ button {
 <script>
 async function access() {
 
-  const code = document.getElementById("code").value.trim();
+  const aura = document.getElementById("aura").value.trim();
+  const laura = document.getElementById("laura").value.trim();
   const status = document.getElementById("status");
 
-  if (!code) {
-    status.textContent = "⚠️ Ingresá un código";
+  if (!aura || !laura) {
+    status.textContent = "⚠️ Completá los dos campos";
     return;
   }
 
@@ -125,7 +151,10 @@ async function access() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({
+        aura: aura,
+        laura: laura
+      })
     });
 
     const data = await response.json();
@@ -151,26 +180,27 @@ app.post("/access", async (req, res) => {
 
   try {
 
-    const code = String(req.body?.code || "").trim();
+    const aura = String(req.body?.aura || "").trim();
+    const laura = String(req.body?.laura || "").trim();
 
-    if (!code) {
+    if (!aura || !laura) {
       return res.status(400).json({
         success: false,
-        message: "Falta el código"
+        message: "Completá los dos campos"
       });
     }
 
-    if (!ACCESS_KEY) {
+    if (!ACCESS_USER || !ACCESS_KEY) {
       return res.status(500).json({
         success: false,
-        message: "ACCESS_KEY no configurado"
+        message: "Credenciales no configuradas"
       });
     }
 
-    if (code !== ACCESS_KEY) {
+    if (aura !== ACCESS_USER || laura !== ACCESS_KEY) {
       return res.status(401).json({
         success: false,
-        message: "Código incorrecto"
+        message: "Datos incorrectos"
       });
     }
 
@@ -191,7 +221,7 @@ app.post("/access", async (req, res) => {
         embeds: [
           {
             title: "🔐 Nuevo acceso a S0MBRA",
-            description: "Un usuario ingresó correctamente al sistema.",
+            description: "Acceso autorizado correctamente.",
             fields: [
               {
                 name: "Estado",
