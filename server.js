@@ -1,9 +1,19 @@
+import express from "express";
+
+const app = express();
+
+app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+  res.send(`
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>S0MBRA 2.4 // SECURE GATEWAY</title>
+<title>S0MBRA 2.4</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap');
@@ -18,28 +28,68 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #030712;
-  background-image:
-    radial-gradient(at 50% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
-    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 20px 20px, 20px 20px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(0, 170, 255, 0.16), transparent 35%),
+    linear-gradient(180deg, #111827 0%, #090d16 55%, #05070b 100%);
   color: #f3f4f6;
   font-family: 'Fira Code', monospace;
+  overflow: hidden;
+}
+
+/* Estilo Roblox: bloques y líneas de fondo */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Luces ambientales */
+body::after {
+  content: "";
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: rgba(0, 162, 255, 0.08);
+  filter: blur(80px);
+  top: -220px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .container {
   width: 90%;
   max-width: 420px;
   padding: 32px;
-  background: rgba(15,23,42,0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(16,185,129,0.3);
-  border-radius: 12px;
+  background: rgba(20, 25, 35, 0.94);
+  border: 2px solid #00a2ff;
+  border-radius: 10px;
   box-shadow:
-    0 0 40px rgba(0,0,0,0.8),
-    0 0 15px rgba(16,185,129,0.1);
+    0 0 0 1px rgba(255,255,255,0.05),
+    0 12px 45px rgba(0,0,0,0.75),
+    0 0 25px rgba(0,162,255,0.16);
   position: relative;
+  z-index: 2;
+}
+
+/* Barra superior estilo interfaz Roblox */
+.container::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 18px;
+  right: 18px;
+  height: 3px;
+  background: #00a2ff;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 0 12px rgba(0,162,255,0.65);
 }
 
 .header {
@@ -53,14 +103,14 @@ body {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: 4px;
-  color: #10b981;
-  text-shadow: 0 0 8px rgba(16,185,129,0.4);
+  color: #00a2ff;
+  text-shadow: 0 0 10px rgba(0,162,255,0.5);
 }
 
 .subtitle {
   font-size: 11px;
-  color: #6b7280;
-  margin-top: 6px;
+  color: #8b95a7;
+  margin-top: 7px;
   letter-spacing: 1px;
 }
 
@@ -70,21 +120,21 @@ body {
   justify-content: center;
   gap: 8px;
   font-size: 11px;
-  color: #10b981;
+  color: #22c55e;
   margin-top: 10px;
 }
 
 .dot {
   width: 7px;
   height: 7px;
-  background-color: #10b981;
+  background-color: #22c55e;
   border-radius: 50%;
-  box-shadow: 0 0 8px #10b981;
+  box-shadow: 0 0 9px #22c55e;
   animation: blink 1.5s infinite;
 }
 
 @keyframes blink {
-  0%,100% { opacity: 1; }
+  0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
 
@@ -96,16 +146,16 @@ body {
 .label {
   display: block;
   margin-bottom: 8px;
-  color: #9ca3af;
+  color: #aeb7c5;
   font-size: 12px;
 }
 
 input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 13px 14px;
   border-radius: 6px;
-  border: 1px solid #1e293b;
-  background: #090d16;
+  border: 1px solid #303846;
+  background: #0c111a;
   color: #f3f4f6;
   outline: none;
   font-family: inherit;
@@ -113,30 +163,41 @@ input {
   transition: all 0.2s ease;
 }
 
+input::placeholder {
+  color: #596273;
+}
+
 input:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+  border-color: #00a2ff;
+  box-shadow: 0 0 0 2px rgba(0,162,255,0.16);
 }
 
 button {
   width: 100%;
   margin-top: 10px;
   padding: 14px;
-  border: none;
+  border: 0;
   border-radius: 6px;
-  background: #10b981;
-  color: #030712;
+  background: #00a2ff;
+  color: white;
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
 }
 
 button:hover {
-  background: #34d399;
-  box-shadow: 0 0 15px rgba(16,185,129,0.4);
+  background: #29b5ff;
+  box-shadow:
+    0 0 15px rgba(0,162,255,0.35),
+    0 5px 15px rgba(0,0,0,0.4);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:disabled {
@@ -153,9 +214,17 @@ button:disabled {
   line-height: 1.4;
 }
 
-.status-info { color: #3b82f6; }
-.status-success { color: #10b981; }
-.status-error { color: #ef4444; }
+.status-info {
+  color: #60a5fa;
+}
+
+.status-success {
+  color: #22c55e;
+}
+
+.status-error {
+  color: #ef4444;
+}
 </style>
 </head>
 
@@ -165,7 +234,6 @@ button:disabled {
 
   <div class="header">
 
-    <!-- CAMBIO: S0MBRA 2.4 -->
     <div class="logo">S0MBRA 2.4</div>
 
     <div class="subtitle">
@@ -180,8 +248,6 @@ button:disabled {
   </div>
 
   <div class="input-group">
-
-    <!-- CAMBIO: USUARIO -->
     <label class="label">> USUARIO</label>
 
     <input
@@ -191,11 +257,9 @@ button:disabled {
       autocomplete="off"
       spellcheck="false"
     >
-
   </div>
 
   <div class="input-group">
-
     <label class="label">> ACCESO / CLAVE</label>
 
     <input
@@ -204,7 +268,6 @@ button:disabled {
       placeholder="••••••••••••"
       autocomplete="off"
     >
-
   </div>
 
   <button id="btn-submit" onclick="access()">
@@ -264,8 +327,7 @@ async function access() {
 
       setTimeout(() => {
         alert("Acceso concedido a S0MBRA 2.4.");
-        location.reload();
-      }, 1500);
+      }, 1000);
 
     } else {
 
@@ -280,7 +342,7 @@ async function access() {
 
     status.className = "status-error";
     status.textContent =
-      "❌ ERROR: No se pudo conectar con el servidor de licencias.";
+      "❌ ERROR: No se pudo conectar con el servidor.";
 
     resetForm();
   }
@@ -297,3 +359,46 @@ function resetForm() {
 
 </body>
 </html>
+  `);
+});
+
+app.post("/access", async (req, res) => {
+
+  try {
+
+    const usuario = String(req.body?.usuario || "").trim();
+    const clave = String(req.body?.clave || "").trim();
+
+    if (!usuario || !clave) {
+      return res.status(400).json({
+        success: false,
+        message: "Credenciales incompletas."
+      });
+    }
+
+    // Colocá aquí tu validación real de usuario/clave.
+    // No se almacenan ni se envían las contraseñas a terceros.
+
+    res.json({
+      success: true,
+      message: "Autenticación exitosa."
+    });
+
+  } catch (error) {
+
+    console.error("Error en servidor:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error de servidor interno."
+    });
+
+  }
+
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    \`[S0MBRA 2.4] Gateway ejecutándose en puerto \${PORT}\`
+  );
+});
