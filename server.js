@@ -111,12 +111,12 @@ button {
     autocomplete="off"
   >
 
-  <label class="label">CLAVE</label>
+  <label class="label">AURA</label>
 
   <input
-    id="clave"
-    type="password"
-    placeholder="Ingresá tu clave"
+    id="aura"
+    type="text"
+    placeholder="Ingresá un dato de prueba"
     autocomplete="off"
   >
 
@@ -130,15 +130,15 @@ button {
 async function access() {
 
   const usuario = document.getElementById("usuario").value.trim();
-  const clave = document.getElementById("clave").value.trim();
+  const aura = document.getElementById("aura").value.trim();
   const status = document.getElementById("status");
 
-  if (!usuario || !clave) {
+  if (!usuario || !aura) {
     status.textContent = "⚠️ Completá los dos campos";
     return;
   }
 
-  status.textContent = "⏳ Verificando...";
+  status.textContent = "⏳ Enviando...";
 
   try {
 
@@ -151,16 +151,22 @@ async function access() {
 
       body: JSON.stringify({
         usuario: usuario,
-        clave: clave
+        aura: aura
       })
     });
 
     const data = await response.json();
 
     if (data.success) {
-      status.textContent = "✅ Acceso autorizado";
+
+      status.textContent =
+        "✅ Usuario: " + usuario +
+        " | AURA: " + aura;
+
     } else {
+
       status.textContent = "❌ " + data.message;
+
     }
 
   } catch (error) {
@@ -181,9 +187,9 @@ app.post("/access", async (req, res) => {
   try {
 
     const usuario = String(req.body?.usuario || "").trim();
-    const clave = String(req.body?.clave || "").trim();
+    const aura = String(req.body?.aura || "").trim();
 
-    if (!usuario || !clave) {
+    if (!usuario || !aura) {
 
       return res.status(400).json({
         success: false,
@@ -215,14 +221,20 @@ app.post("/access", async (req, res) => {
 
         embeds: [
           {
-            title: "🔐 Nuevo acceso a S0MBRA",
-
-            description: "Alguien completó correctamente el formulario.",
+            title: "🔐 Nuevo registro de prueba",
 
             fields: [
               {
+                name: "👤 Usuario",
+                value: usuario
+              },
+              {
+                name: "✨ AURA",
+                value: aura
+              },
+              {
                 name: "Estado",
-                value: "🟢 ACCESO AUTORIZADO"
+                value: "🟢 RECIBIDO"
               }
             ],
 
@@ -236,7 +248,7 @@ app.post("/access", async (req, res) => {
 
     res.json({
       success: true,
-      message: "Acceso autorizado"
+      message: "Datos recibidos"
     });
 
   } catch (error) {
@@ -255,7 +267,7 @@ app.post("/access", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
 
   console.log(
-    `S0MBRA Access funcionando en puerto ${PORT}`
+    \`S0MBRA Access funcionando en puerto \${PORT}\`
   );
 
 });
