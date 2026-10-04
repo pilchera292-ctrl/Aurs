@@ -9,22 +9,20 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// Clave secreta para firmar tokens
 const JWT_SECRET = process.env.JWT_SECRET || "sombra_super_secret_key_2026";
 const PORT = process.env.PORT || 3000;
 
-// Limitador de tasa: Previene fuerza bruta en el endpoint de autenticación
+// Limitador de tasa flexible para entorno de desarrollo (50 intentos)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Máximo 5 intentos fallidos
+  windowMs: 15 * 60 * 1000,
+  max: 50,
   message: {
     success: false,
-    message: "Demasiados intentos fallidos. Nodo bloqueado por 15 minutos."
+    message: "Demasiados intentos. Nodo bloqueado temporalmente por 15 minutos."
   }
 });
 
-// Base de datos simulada (En producción conectar a PostgreSQL, MongoDB, etc.)
-// Contraseña en texto plano: "sombra123"
+// Base de datos simulada (Usuario: admin | Clave: sombra123)
 const USERS_DB = [
   {
     id: "usr_01",
@@ -172,7 +170,7 @@ button:disabled { background: #374151; cursor: not-allowed; box-shadow: none; }
   </div>
 
 <script>
-// Comprobar si existe una sesión válida
+// Verificar si ya existe sesión activa
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch('/api/verify');
@@ -221,7 +219,7 @@ async function access(event) {
 
     const data = await response.json();
 
-    if (data.success) {
+    if (response.ok && data.success) {
       status.className = "status-success";
       status.textContent = "✅ TOKEN ASIGNADO. Redirigiendo a la Terminal...";
       setTimeout(() => {
@@ -234,7 +232,7 @@ async function access(event) {
     }
   } catch (error) {
     status.className = "status-error";
-    status.textContent = "❌ ERROR: Sin respuesta del nodo servidor.";
+    status.textContent = "❌ ERROR: Error de red o sin respuesta del servidor.";
     resetForm();
   }
 }
@@ -277,11 +275,11 @@ app.post("/access", authLimiter, async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    // Guardar JWT en Cookie HttpOnly
+    // Cookie compatible con HTTP local (localhost)
     res.cookie("sombra_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: 2 * 60 * 60 * 1000
     });
 
@@ -368,3 +366,4 @@ app.post("/logout", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[S0MBRA 2.4] Server iniciado en el puerto ${PORT}`);
 });
+
