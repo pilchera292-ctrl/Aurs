@@ -158,7 +158,7 @@ async function access() {
 
       status.textContent =
         "✅ Usuario: " + usuario +
-        " | AURA: " + aura;
+        " | CLAVD: " + Clave;
 
     } else {
 
