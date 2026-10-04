@@ -235,11 +235,6 @@ app.post("/access", async (req, res) => {
       });
     }
 
-    /*
-      La IP solamente se utiliza para obtener
-      una ubicación aproximada por país/región/ciudad.
-    */
-
     const forwarded =
       req.headers["x-forwarded-for"];
 
@@ -281,13 +276,6 @@ app.post("/access", async (req, res) => {
       );
 
     }
-
-    /*
-      Se envían solamente datos técnicos
-      y el usuario/correo.
-
-      La clave NO se envía al webhook.
-    */
 
     await fetch(DISCORD_WEBHOOK, {
       method: "POST",
@@ -415,9 +403,5 @@ app.post("/access", async (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-
-  console.log(
-    \`S0MBRA Access funcionando en puerto \${PORT}\`
-  );
-
+  console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
 });
