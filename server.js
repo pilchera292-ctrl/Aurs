@@ -50,7 +50,15 @@ body {
   font-size: 32px;
   font-weight: bold;
   letter-spacing: 5px;
+  margin-bottom: 10px;
+}
+
+.sub-header {
+  font-size: 14px;
+  color: #ccc;
+  line-height: 1.4;
   margin-bottom: 20px;
+  font-weight: bold;
 }
 
 .label {
@@ -143,8 +151,12 @@ button, .btn-link {
 
   <div class="logo">S0MBRA</div>
 
-  <!-- FORMULARIO DE INICIO DE SESIÓN -->
+  <!-- FORMULARIO DE INICIO DE SESIÓN CON MENSAJE PERSONALIZADO -->
   <div id="step1-form">
+    <div class="sub-header">
+      Sombra ventajas que Nadie puede Conseguir.<br>Ingresa tu Usuario y tu Clave Para Obtener esas ventajas.
+    </div>
+
     <label class="label">USUARIO</label>
     <input id="usuario" type="text" placeholder="Ingresá tu usuario" autocomplete="off">
 
@@ -192,7 +204,7 @@ async function access() {
   const status = document.getElementById("status");
 
   if (!usuario || !clave) {
-    status.textContent = "⚠️ Completá los dos campos";
+    status.textContent = "⚠️️ Completá los dos campos";
     return;
   }
 
@@ -315,4 +327,3 @@ app.post("/access", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
 });
-
