@@ -161,20 +161,20 @@ button, .btn-link {
     <div class="step-card">
       <div class="step-title">PASO 1: Descargar e instalar Delta Executor</div>
       <div class="step-desc">Necesitás contar con el ejecutor Delta actualizado para inyectar el script.</div>
-      <a href="https://deltaexecutor.com/" target="_blank" class="btn-link">📥 DESCARGAR DELTA EXECUTOR</a>
+      <a href="https://deltaexecuttor.com.mx/" target="_blank" class="btn-link">📥 DESCARGAR DELTA EXECUTOR</a>
     </div>
 
     <!-- Paso 2: Ticket de Discord & Key -->
     <div class="step-card">
       <div class="step-title">PASO 2: Generar tu Key en Discord</div>
-      <div class="step-desc">Entrá a nuestro Discord oficial, abrí un ticket en el canal <b>#palabra-clave</b> y solicitá/genera tu Key de acceso.</div>
+      <div class="step-desc">Entrá a nuestro Discord oficial, abrí un ticket en el canal <b>#palabra-clave</b> y solicitá/generá tu Key de acceso.</div>
       <a href="${DISCORD_SERVER_LINK}" target="_blank" class="btn-link">💬 ENTRAR AL DISCORD</a>
     </div>
 
     <!-- Paso 3: Comprar S0MBRA V3 -->
     <div class="step-card">
       <div class="step-title">PASO 3: Obtener S0MBRA V3</div>
-      <div class="step-desc">Adquirí el script oficial S0MBRA V3 para desbloquear todas las funciones avanzadas.</div>
+      <div class="step-desc">Entrá al Discord, abrí un ticket y seleccioná la opción <b>"comprar sombra"</b> para adquirir la versión completa.</div>
       <a href="${DISCORD_SERVER_LINK}" target="_blank" class="btn-link btn-buy">🛒 COMPRAR S0MBRA V3</a>
     </div>
 
@@ -315,3 +315,4 @@ app.post("/access", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`S0MBRA Access funcionando en puerto ${PORT}`);
 });
+
